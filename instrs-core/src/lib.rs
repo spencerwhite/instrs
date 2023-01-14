@@ -59,7 +59,9 @@ macro_rules! impl_byte_serialize {
     }
 }
 
-impl_byte_serialize!(u8,u16,u32,u64,u128,usize);
+impl_byte_serialize!(u8,u16,u32,u64,u128,usize,
+                     i8,i16,i32,i64,i128,isize,
+                     f32,f64);
 
 impl<B: Serialize, const N: usize> Serialize for [B; N] {
     fn from_bytes(b: &mut &[u8]) -> Result<Self, Error> {
