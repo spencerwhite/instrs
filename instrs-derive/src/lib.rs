@@ -1,14 +1,33 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+#![feature(trait_alias)]
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+mod serialize;
+mod util;
+mod info;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+use proc_macro2::TokenStream;
+use proc_macro::TokenStream as TStream;
+use quote_into::quote_into;
+use syn::{*, spanned::Spanned};
+
+use crate::serialize::*;
+use crate::info::Info;
+
+#[proc_macro_derive(Serialize)]
+pub fn derive_serialize(input: TStream) -> TStream {
+    let input: Info = parse_macro_input!(input as DeriveInput).into();
+
+    let mut s = proc_macro2::TokenStream::new();
+
+    quote_into!{s += 
+        impl Serialize for #(input.name) {
+            type Size = usize;
+
+            #{impl_into_string(&input, s)}
+            #{impl_into_bytes(&input, s)}
+            #{impl_from_string(&input, s)}
+            #{impl_from_bytes(&input, s)}
+        }
     }
+
+    s.into()
 }
