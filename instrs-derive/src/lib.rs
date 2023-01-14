@@ -20,8 +20,6 @@ pub fn derive_serialize(input: TStream) -> TStream {
 
     quote_into!{s += 
         impl Serialize for #(input.name) {
-            type Size = usize;
-
             #{impl_into_string(&input, s)}
             #{impl_into_bytes(&input, s)}
             #{impl_from_string(&input, s)}

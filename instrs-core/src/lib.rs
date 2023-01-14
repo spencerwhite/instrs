@@ -1,4 +1,5 @@
 #![feature(array_try_from_fn)]
+#![feature(split_array)]
 
 use num_traits::Unsigned;
 use std::fmt::{Formatter, Error as FError};
@@ -10,10 +11,8 @@ pub enum Error {
 }
 
 pub trait Serialize: Sized {
-    type Size: Unsigned;
-
-    fn from_bytes(b: &mut &[Self::Size]) -> Result<Self, Error>;
-    fn into_bytes(&self, b: &mut Vec<Self::Size>);
+    fn from_bytes(b: &mut &[u8]) -> Result<Self, Error>;
+    fn into_bytes(&self, b: &mut Vec<u8>);
 
     ///Essentially the FromStr trait, but this allows us to define it on std library types like
     ///[usize; N]
@@ -27,17 +26,21 @@ macro_rules! impl_byte_serialize {
     ($($t:ty),+) => {
         $(
             impl Serialize for $t {
-                type Size = Self;
+                fn from_bytes(b: &mut &[u8]) -> Result<Self, Error> {
+                    const SIZE: usize = std::mem::size_of::<$t>();
 
-                fn from_bytes(b: &mut &[Self::Size]) -> Result<Self, Error> {
-                    let Some((byte, rem)) = b.split_first() else {return Err(Error::Expected)};
+                    if SIZE > b.len() {return Err(Error::Expected)};
+
+                    let (bytes, rem) = b.split_array_ref::<SIZE>();
                     *b = rem;
 
-                    Ok(*byte)
+                    Ok(<$t>::from_le_bytes(*bytes))
                 }
 
-                fn into_bytes(&self, b: &mut Vec<Self::Size>) {
-                    b.push(*self)
+                fn into_bytes(&self, b: &mut Vec<u8>) {
+                    let bytes = self.to_le_bytes();
+
+                    b.extend_from_slice(&bytes);
                 }
 
                 fn from_string(s: &mut &str) -> Result<Self, Error> {
@@ -59,15 +62,13 @@ macro_rules! impl_byte_serialize {
 impl_byte_serialize!(u8,u16,u32,u64,u128,usize);
 
 impl<B: Serialize, const N: usize> Serialize for [B; N] {
-    type Size = B::Size;
-
-    fn from_bytes(b: &mut &[Self::Size]) -> Result<Self, Error> {
+    fn from_bytes(b: &mut &[u8]) -> Result<Self, Error> {
         std::array::try_from_fn(|_| {
             <B>::from_bytes(b)
         })
     }
 
-    fn into_bytes(&self, b: &mut Vec<Self::Size>) {
+    fn into_bytes(&self, b: &mut Vec<u8>) {
         self.iter().for_each(|inner| {
             inner.into_bytes(b);
         });
@@ -85,12 +86,8 @@ impl<B: Serialize, const N: usize> Serialize for [B; N] {
     }
 }
 
-impl<B: Serialize> Serialize for Vec<B> where
-    B::Size: Into<usize> + Copy,
-{
-    type Size = B::Size;
-
-    fn from_bytes(b: &mut &[Self::Size]) -> Result<Self, Error> {
+impl<B: Serialize> Serialize for Vec<B> {
+    fn from_bytes(b: &mut &[u8]) -> Result<Self, Error> {
         let Some((len, rem)) = b.split_first() else {return Err(Error::Expected)};
         *b = rem;
 
@@ -105,7 +102,7 @@ impl<B: Serialize> Serialize for Vec<B> where
         Ok(v)
     }
 
-    fn into_bytes(&self, b: &mut Vec<Self::Size>) {
+    fn into_bytes(&self, b: &mut Vec<u8>) {
         self.iter()
             .for_each(|inner| {
                 inner.into_bytes(b);
@@ -132,5 +129,23 @@ impl<B: Serialize> Serialize for Vec<B> where
 
         self.into_iter()
             .for_each(|b| b.into_string(f));
+    }
+}
+
+impl<B: Serialize> Serialize for Box<B> {
+    fn from_bytes(b: &mut &[u8]) -> Result<Self, Error> {
+        Ok(Box::new(B::from_bytes(b)?))
+    }
+
+    fn into_bytes(&self, b: &mut Vec<u8>) {
+        B::into_bytes(self, b);
+    }
+
+    fn from_string(s: &mut &str) -> Result<Self, Error> {
+        Ok(Box::new(B::from_string(s)?))
+    }
+
+    fn into_string(&self, f: &mut String) {
+        B::into_string(self, f);
     }
 }

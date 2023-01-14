@@ -59,7 +59,7 @@ pub(crate) fn impl_into_bytes(input: &Info, s: &mut TokenStream) {
         for (i, instruction) in instructions.iter().enumerate() {
             quote_into!{s += 
                 #name::#(instruction.name) #{match_fields(&instruction.fields, s)} => {
-                    f.push(#(i));
+                    f.push(#(i as u8));
                     #{foreach_field_into_bytes(&instruction.fields, s)}
                 },
             };
@@ -67,7 +67,7 @@ pub(crate) fn impl_into_bytes(input: &Info, s: &mut TokenStream) {
     }
 
     quote_into!{ s +=
-        fn into_bytes(&self, f: &mut Vec<Self::Size>) {
+        fn into_bytes(&self, f: &mut Vec<u8>) {
             match self {
                 #{instruction_matches(&input.name, &input.instructions, s)}
             }
@@ -122,7 +122,7 @@ pub(crate) fn impl_from_bytes(input: &Info, s: &mut TokenStream) {
     fn instruction_matches(name: &Ident, instructions: &Vec<Instruction>, s: &mut TokenStream) {
         for (i, instruction) in instructions.iter().enumerate() {
             quote_into!{ s+=
-                Some(#(i)) => {
+                Some(#(i as u8)) => {
                     *f = &f[1..];
                     #{foreach_field_from_string(&instruction.fields, s)}
                     
@@ -133,7 +133,7 @@ pub(crate) fn impl_from_bytes(input: &Info, s: &mut TokenStream) {
     }
 
     quote_into!{ s +=
-        fn from_bytes(f: &mut &[Self::Size]) -> Result<Self, Error> {
+        fn from_bytes(f: &mut &[u8]) -> Result<Self, Error> {
             match f.first() {
                 #{instruction_matches(&input.name, &input.instructions, s)}
 

@@ -4,11 +4,11 @@ use instrs_core::*;
 #[derive(Serialize)]
 pub enum Instruction {
     Add {
-        a: usize,
-        b: usize,
-        addr: usize,
+        a: u8,
+        b: u8,
+        addr: u8,
     },
-    Jump(usize),
+    Jump(u32),
     Halt,
 }
 

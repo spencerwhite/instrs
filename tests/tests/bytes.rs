@@ -28,15 +28,13 @@ fn from_string() {
 
 #[test]
 fn into_bytes() {
-    fn test_into_bytes<T: Serialize>(t: T, expected: &[usize]) 
-        where T::Size: std::fmt::Debug + PartialEq<usize>
-    {
+    fn test_into_bytes<T: Serialize>(t: T, expected: &[u8]) {
         let mut v = Vec::new();
         T::into_bytes(&t, &mut v);
         assert_eq!(v, expected);
     }
 
     test_into_bytes(Instruction::Add {a: 1, b: 2, addr: 3}, &[0, 1, 2, 3]);
-    test_into_bytes(Instruction::Jump (usize::MAX), &[1, usize::MAX]);
+    test_into_bytes(Instruction::Jump (u32::MAX), &[1, u8::MAX, u8::MAX, u8::MAX, u8::MAX]);
     test_into_bytes(Instruction::Halt, &[2]);
 }
