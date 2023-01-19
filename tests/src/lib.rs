@@ -1,7 +1,6 @@
-use instrs_derive::*;
-use instrs_core::*;
+use instrs::*;
 
-#[derive(Serialize)]
+#[derive(ByteSerialize)]
 pub enum Instruction {
     Add {
         a: u8,

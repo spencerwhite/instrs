@@ -6,5 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-instrs-derive = {path = "../instrs-derive"}
-instrs-core = {path = "../instrs-core/"}
+# instrs-derive = {path = "../instrs-derive"}
+# instrs-core = {path = "../instrs-core/"}
+instrs = {path = "../instrs/"}
