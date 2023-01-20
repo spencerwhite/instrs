@@ -4,12 +4,12 @@ use instrs::*;
 
 fn test_into_bytes<T: Serialize>(t: T, expected: &[u8]) {
     let mut v = Vec::new();
-    T::into_bytes(&t, &mut v);
+    T::into_bytes::<u8>(&t, &mut v).expect(&format!("You mucked up the test for {:?}", expected));
     assert_eq!(v, expected);
 }
 
 fn test_from_bytes<T: Serialize + std::fmt::Debug + PartialEq>(mut t: &[u8], expected: T) {
-    let value = T::from_bytes(&mut t).expect(&format!("You mucked up the test for {:?}", expected));
+    let value = T::from_bytes::<u8>(&mut t).expect(&format!("You mucked up the test for {:?}", expected));
     assert_eq!(value, expected);
 }
 

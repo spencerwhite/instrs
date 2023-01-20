@@ -9,7 +9,7 @@ pub(crate) fn impl_into_bytes(input: &Info, s: &mut TokenStream) {
     fn foreach_field_into_bytes(fields: &Fields, s: &mut TokenStream) {
         foreach_field(fields, s, |_, ident, s| {
             quote_into!{s +=
-                Serialize::into_bytes(#(ident), f);
+                Serialize::into_bytes::<S>(#(ident), f)?;
             }
         })
     }
@@ -26,10 +26,12 @@ pub(crate) fn impl_into_bytes(input: &Info, s: &mut TokenStream) {
     }
 
     quote_into!{ s +=
-        fn into_bytes(&self, f: &mut Vec<u8>) {
+        fn into_bytes<S: instrs::Size>(&self, f: &mut Vec<u8>) -> Result<(), instrs::Error> {
             match self {
                 #{instruction_matches(&input.name, &input.instructions, s)}
             }
+
+            Ok(())
         }
     };
 }
@@ -38,7 +40,7 @@ pub(crate) fn impl_from_bytes(input: &Info, s: &mut TokenStream) {
     fn foreach_field_from_string(fields: &Fields, s: &mut TokenStream) {
         foreach_field(fields, s, |_, ident, s| {
             quote_into!{s +=
-                let #(ident) = Serialize::from_bytes(f)?;
+                let #(ident) = Serialize::from_bytes::<S>(f)?;
             }
         })
     }
@@ -59,7 +61,7 @@ pub(crate) fn impl_from_bytes(input: &Info, s: &mut TokenStream) {
     let n_instructions = input.instructions.len() as u32 - 1;
 
     quote_into!{ s +=
-        fn from_bytes(f: &mut &[u8]) -> Result<Self, instrs::Error> {
+        fn from_bytes<S: instrs::Size>(f: &mut &[u8]) -> Result<Self, instrs::Error> {
             match f.first() {
                 #{instruction_matches(&input.name, &input.instructions, s)}
 
