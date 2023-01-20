@@ -12,7 +12,7 @@ use syn::{*, spanned::Spanned};
 use crate::serialize::*;
 use crate::info::Info;
 
-#[proc_macro_derive(ByteSerialize)]
+#[proc_macro_derive(Serialize)]
 pub fn derive_byte_serialize(input: TStream) -> TStream {
     let input: Info = parse_macro_input!(input as DeriveInput).into();
 

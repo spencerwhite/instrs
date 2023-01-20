@@ -2,20 +2,65 @@
 #![feature(split_array)]
 #![feature(trait_alias)]
 
-#[derive(Debug)]
+use thiserror::Error;
+
+#[derive(Debug, Error)]
 pub enum Error {
+    /// The bytecode provided is too short. This should only ever happen if the bytecode is
+    /// outdated, or something went wrong when generating it.
+    #[error("Expected {0} bytes")]
     ExpectedBytes(u32),
+    /// Expected a value in a given range, e.g., bools must be between 0 and 1.
+    #[error("Expected a value in the range {0:?}")]
     ExpectedRange(std::ops::RangeInclusive<u32>),
+    /// Parsing a string resulted in invalid utf8. 
+    #[error("Attempted to parse string with invalid utf8: {0:?}")]
     InvalidUtf8(std::string::FromUtf8Error),
+    /// See [Size](crate::Size).
+    ///
+    /// This error is generated when [into_bytes](crate::Serialize::into_bytes) is called 
+    /// on a variable-length struct with >= 2^`S` items 
+    #[error("{needed_bytes} bytes are needed to store this item's length, but only {max_bytes} bytes are available. Try increasing `S`.")]
     TooLarge {
         needed_bytes: u32,
         max_bytes: u32,
     },
+    /// Encountered an invalid utf8 sequence
+    #[error("Encountered an invalid utf8 sequence")]
     InvalidChar,
 }
 
+/// Represents a type that can be used to encode the size of a variable-length struct like
+/// [Vec] and [String]. For example, a `u8` will be cheap and efficient, but
+/// every vec in the bytecode can only be a maximum of 256 items long. 
+///
+/// ```rust
+/// assert_eq!(
+///     <Vec::<u8>>::from_bytes::<u8>(&mut [3,1,2,3].as_slice()), 
+///     Ok(vec![1,2,3])
+/// );
+/// assert_eq!(
+///     <Vec::<u8>>::from_bytes::<u16>(&mut [3,0, 1,2,3].as_slice()), 
+///     Ok(vec![1,2,3])
+/// );
+/// ```
+///
+/// *Note*: You should not use a `usize` since this makes your bytecode platform-dependent.
 pub trait Size = Serialize + TryFrom<usize> + Into<usize>;
 
+/// An item that can be Serialized into bytes. 
+///
+/// # Examples
+/// ```
+/// // `S` parameter is needed in all cases
+/// assert_eq!(u32::from_bytes::<u8>(&mut [3,0,0,0].as_slice(), Ok(3u32)));
+///
+/// // Passing more bytes than needed is not an error
+/// assert_eq!(bool::from_bytes::<u8>(&mut [1,0,0,0,0].as_slice()), Ok(true));
+///
+/// assert_eq!([char; 4]::from_bytes::<u8>(&mut [65,0,0,0, 66,0,0,0, 67,0,0,0, 68,0,0,0].as_slice()), ['A', 'B', 'C', 'D']);
+/// assert_eq!(String::from_bytes::<u8>(&mut [4, 65,66,67,68].as_slice()), String::from("ABCD"));
+/// ```
 pub trait Serialize: Sized {
     fn from_bytes<S: Size>(b: &mut &[u8]) -> Result<Self, Error>;
     fn into_bytes<S: Size>(&self, b: &mut Vec<u8>) -> Result<(), Error>;
@@ -236,6 +281,7 @@ impl Serialize for String {
 }
 
 impl Serialize for &str {
+    /// This function will panic. Make sure to convert to an owned `String` instead
     fn from_bytes<S: Size>(_b: &mut &[u8]) -> Result<Self, Error> {
         panic!("Can't convert bytes to &'str. Try converting to an owned `String` instead")
     }

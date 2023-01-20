@@ -51,6 +51,18 @@ fn string() {
 }
 
 #[test]
+fn vec() {
+    assert_eq!(
+        <Vec::<u8>>::from_bytes::<u8>(&mut [3,1,2,3].as_slice()).unwrap(), 
+        vec![1,2,3]
+    );
+    assert_eq!(
+        <Vec::<u8>>::from_bytes::<u16>(&mut [3,0,1,2,3].as_slice()).unwrap(), 
+        vec![1,2,3]
+    );
+}
+
+#[test]
 fn into_bytes() {
     test_into_bytes(Instruction::Add {a: 1, b: 2, addr: 3}, &[0, 1, 2, 3]);
     test_into_bytes(Instruction::Jump (u32::MAX), &[1, u8::MAX, u8::MAX, u8::MAX, u8::MAX]);

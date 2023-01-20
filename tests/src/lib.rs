@@ -1,6 +1,6 @@
 use instrs::*;
 
-#[derive(ByteSerialize)]
+#[derive(Serialize)]
 pub enum Instruction {
     Add {
         a: u8,
