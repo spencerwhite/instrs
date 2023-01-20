@@ -14,11 +14,13 @@ pub(crate) fn impl_into_bytes(input: &Info, s: &mut TokenStream) {
         })
     }
 
-    fn instruction_matches(name: &Ident, instructions: &Vec<Instruction>, s: &mut TokenStream) {
-        for (i, instruction) in instructions.iter().enumerate() {
+    fn instruction_matches(input: &Info, s: &mut TokenStream) {
+        for (i, instruction) in input.instructions.iter().enumerate() {
+            let i = (&input.repr)(i);
+
             quote_into!{s += 
-                #name::#(instruction.name) #{match_fields(&instruction.fields, s)} => {
-                    f.push(#(i as u8));
+                #(input.name)::#(instruction.name) #{match_fields(&instruction.fields, s)} => {
+                    f.push(#i);
                     #{foreach_field_into_bytes(&instruction.fields, s)}
                 },
             };
@@ -28,7 +30,7 @@ pub(crate) fn impl_into_bytes(input: &Info, s: &mut TokenStream) {
     quote_into!{ s +=
         fn into_bytes<S: instrs::Size>(&self, f: &mut Vec<u8>) -> Result<(), instrs::Error> {
             match self {
-                #{instruction_matches(&input.name, &input.instructions, s)}
+                #{instruction_matches(input, s)}
             }
 
             Ok(())
@@ -45,10 +47,12 @@ pub(crate) fn impl_from_bytes(input: &Info, s: &mut TokenStream) {
         })
     }
 
-    fn instruction_matches(name: &Ident, instructions: &Vec<Instruction>, s: &mut TokenStream) {
-        for (i, instruction) in instructions.iter().enumerate() {
+    fn instruction_matches(input: &Info, s: &mut TokenStream) {
+        for (i, instruction) in input.instructions.iter().enumerate() {
+            let i = (&input.repr)(i);
+
             quote_into!{ s+=
-                Some(#(i as u8)) => {
+                Some(#i) => {
                     *f = &f[1..];
                     #{foreach_field_from_string(&instruction.fields, s)}
                     
@@ -63,7 +67,7 @@ pub(crate) fn impl_from_bytes(input: &Info, s: &mut TokenStream) {
     quote_into!{ s +=
         fn from_bytes<S: instrs::Size>(f: &mut &[u8]) -> Result<Self, instrs::Error> {
             match f.first() {
-                #{instruction_matches(&input.name, &input.instructions, s)}
+                #{instruction_matches(&input, s)}
 
                 None => return Err(instrs::Error::ExpectedBytes(1)),
                 _ => return Err(Error::ExpectedRange(0..=#(n_instructions)))
